@@ -1,0 +1,20 @@
+{
+  "name": "biller-pos",
+  "version": "1.0.0",
+  "description": "Biller POS - one-handed point of sale",
+  "main": "index.js",
+  "scripts": {
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "android:apk": "cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/share": "^6.0.0"
+  },
+  "devDependencies": {},
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.apk
+*.aab
+.DS_Store
+.env
+.env.local
+android/
+www/js/lib/
+.gradle/
+.idea/
+*.iml
+*.log

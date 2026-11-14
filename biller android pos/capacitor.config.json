@@ -1,0 +1,15 @@
+{
+  "appId": "com.biller.pos",
+  "appName": "Biller POS",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 900,
+      "backgroundColor": "#0f3d2e",
+      "showSpinner": false
+    }
+  }
+}

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Biller POS - advertisement builder</title>
+<style>
+  html, body { margin: 0; background: #061611; height: 100%; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* =========================================================================
+   Biller POS advertisement builder.
+
+   Draws a vertical (9:16) film on a canvas and records it with the browser's
+   own MediaRecorder, so no video editing software is needed. The music is
+   generated here with the Web Audio API, so the soundtrack is completely
+   original and free to use.
+
+   To rebuild the film:
+     1. node ad-server.js          (serves this folder)
+     2. node record-ad.js          (writes Biller-POS-ad.mp4)
+
+   The screens come from frames/, the narration from audio/.
+   ========================================================================= */
+
+const W = 1080, H = 1920;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const BASE = '';
+
+const SCENES = [
+  { frame: null, sw: '', en: '', line: null, big: 'Biller POS', small: 'Your shop. One phone. KES 600 a month.' },
+  { frame: '01-sell', sw: 'Uza kwa sekunde', en: 'Sell in seconds - every item on one screen', line: 'line-00' },
+  { frame: '02-scan', sw: 'Scan barcode, kama sokomasi', en: 'Scan the barcode and it lands in the cart', line: 'line-01' },
+  { frame: '03-scanned-added', sw: 'Imeongezeka, imehesabiwa', en: 'Scanned, priced and added', line: 'line-02' },
+  { frame: '04-search', sw: 'Tafuta haraka', en: 'Search anything in an instant', line: 'line-03' },
+  { frame: '05-cart', sw: 'Jumla, kubadilisha, faida', en: 'Total, change and your profit', line: 'line-04' },
+  { frame: '06-mpesa-ready', sw: 'Pokea M-Pesa moja kwa moja', en: 'Take M-Pesa straight from the till', line: 'line-05' },
+  { frame: '07-mpesa-prompt', sw: 'Mteja apata PIN kwenye simu yake', en: 'The customer gets the M-Pesa PIN prompt', line: 'line-06' },
+  { frame: '08-mpesa-receipt', sw: 'Risiti yenye M-Pesa code', en: 'Every receipt keeps the M-Pesa code', line: 'line-07' },
+  { frame: '09-stock', sw: 'Stock iko wazi', en: 'Know what is on the shelf', line: 'line-08' },
+  { frame: '10-reports', sw: 'Mapato ya leo na faida', en: "Today's sales, profit and M-Pesa in one place", line: 'line-09' },
+  { frame: '11-debt', sw: 'Kumbuka madeni ya wateja', en: 'Who owes what, settled by M-Pesa too', line: 'line-10' },
+  { frame: '13-settings', sw: 'Chagua rangi na maandishi', en: 'Your colours, your text size, your data', line: 'line-11' },
+  { frame: '14-plan', sw: 'KES 600 kwa mwezi', en: 'One monthly plan, with a reminder', line: 'line-12' },
+  { frame: '15-orders', sw: 'Kila muuzaji umeandikwa', en: 'Every sale is recorded', line: 'line-13' },
+  { frame: null, sw: 'Tunakusaidia kuanza', en: 'We help you set up - scanning your items and adding them to stock. WhatsApp 0724 067 632', line: 'line-14' }
+];
+
+const COLORS = {
+  bg0: '#0a2c21',
+  bg1: '#05130f',
+  lime: '#d9f36d',
+  white: '#f4f8f4',
+  muted: '#a9c2b3',
+  edge: 'rgba(217,243,109,.35)'
+};
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function wrap(c, text, maxWidth) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (c.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function drawBackdrop(t) {
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, COLORS.bg0);
+  g.addColorStop(0.55, '#071c15');
+  g.addColorStop(1, COLORS.bg1);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.35);
+  const r = ctx.createRadialGradient(W * 0.5, H * 0.34, 40, W * 0.5, H * 0.34, 760);
+  r.addColorStop(0, `rgba(217,243,109,${0.10 + 0.05 * pulse})`);
+  r.addColorStop(1, 'rgba(217,243,109,0)');
+  ctx.fillStyle = r;
+  ctx.fillRect(0, 0, W, H);
+}
+function drawBrand() {
+  ctx.save();
+  ctx.fillStyle = COLORS.lime;
+  roundRect(70, 92, 54, 54, 14);
+  ctx.fill();
+  ctx.fillStyle = '#0a2c21';
+  ctx.font = 'bold 30px "Segoe UI", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('B', 97, 120);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = COLORS.white;
+  ctx.font = '700 34px "Segoe UI", Arial, sans-serif';
+  ctx.fillText('Biller POS', 142, 120);
+  ctx.restore();
+}
+function drawChip(text) {
+  ctx.save();
+  ctx.font = '700 26px "Segoe UI", Arial, sans-serif';
+  const w = ctx.measureText(text).width + 44;
+  ctx.fillStyle = 'rgba(217,243,109,.14)';
+  roundRect(W - 70 - w, 96, w, 46, 23);
+  ctx.fill();
+  ctx.strokeStyle = COLORS.edge;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = COLORS.lime;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, W - 70 - w / 2, 120);
+  ctx.restore();
+}
+function drawCaptions(scene, appear) {
+  const slide = (1 - appear) * 26;
+  ctx.save();
+  ctx.globalAlpha = appear;
+  ctx.translate(0, slide);
+  ctx.textAlign = 'center';
+  if (scene.big) {
+    ctx.fillStyle = COLORS.white;
+    ctx.font = '800 104px "Segoe UI", Arial, sans-serif';
+    ctx.fillText(scene.big, W / 2, 470);
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '500 40px "Segoe UI", Arial, sans-serif';
+    wrap(ctx, scene.small, W - 180).forEach((line, i) => ctx.fillText(line, W / 2, 545 + i * 52));
+  } else {
+    ctx.fillStyle = COLORS.white;
+    ctx.font = '800 66px "Segoe UI", Arial, sans-serif';
+    const lines = wrap(ctx, scene.sw, W - 130);
+    lines.forEach((line, i) => ctx.fillText(line, W / 2, 240 + i * 78));
+    ctx.fillStyle = COLORS.lime;
+    ctx.font = '600 38px "Segoe UI", Arial, sans-serif';
+    const lines2 = wrap(ctx, scene.en, W - 190);
+    lines2.forEach((line, i) => ctx.fillText(line, W / 2, 240 + lines.length * 78 + 20 + i * 48));
+  }
+  ctx.restore();
+}
+function drawPhone(image, zoom, driftY) {
+  if (!image) return;
+  const boxH = 1330;
+  const boxW = Math.round(boxH * (780 / 1688));
+  const x = Math.round((W - boxW) / 2);
+  const y = 440 + driftY;
+  // The whole phone breathes a little, so the app screen is never cropped.
+  const grow = 0.965 + 0.05 * zoom;
+  ctx.save();
+  ctx.translate(W / 2, y + boxH / 2);
+  ctx.scale(grow, grow);
+  ctx.translate(-W / 2, -(y + boxH / 2));
+  ctx.shadowColor = 'rgba(0,0,0,.55)';
+  ctx.shadowBlur = 60;
+  ctx.shadowOffsetY = 24;
+  ctx.fillStyle = '#0d2a20';
+  roundRect(x - 14, y - 14, boxW + 28, boxH + 28, 44);
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = 'rgba(217,243,109,.22)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.save();
+  roundRect(x, y, boxW, boxH, 34);
+  ctx.clip();
+  ctx.drawImage(image, x, y, boxW, boxH);
+  ctx.restore();
+  ctx.restore();
+}
+function drawProgress(t, total) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,.14)';
+  roundRect(70, H - 74, W - 140, 8, 4);
+  ctx.fill();
+  ctx.fillStyle = COLORS.lime;
+  roundRect(70, H - 74, (W - 140) * Math.min(1, t / total), 8, 4);
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- the music: an original, gentle instrumental ---------- */
+function makeImpulse(ctx, seconds, decay) {
+  const rate = ctx.sampleRate;
+  const length = Math.floor(rate * seconds);
+  const impulse = ctx.createBuffer(2, length, rate);
+  for (let ch = 0; ch < 2; ch += 1) {
+    const data = impulse.getChannelData(ch);
+    for (let i = 0; i < length; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+  return impulse;
+}
+function buildMusic(audioCtx, out) {
+  const master = audioCtx.createGain();
+  master.gain.value = 0.0001;
+  const comp = audioCtx.createDynamicsCompressor();
+  comp.threshold.value = -20;
+  comp.ratio.value = 3;
+  const dry = audioCtx.createGain(); dry.gain.value = 0.9;
+  const wet = audioCtx.createGain(); wet.gain.value = 0.26;
+  const verb = audioCtx.createConvolver();
+  verb.buffer = makeImpulse(audioCtx, 2.1, 2.4);
+  dry.connect(comp);
+  verb.connect(wet); wet.connect(comp);
+  comp.connect(master);
+  master.connect(out);
+
+  const bpm = 90;
+  const beat = 60 / bpm;
+  const bar = beat * 4;
+  const chords = [
+    { root: 65.41, notes: [261.63, 329.63, 392.0] },   // C
+    { root: 55.0, notes: [220.0, 261.63, 329.63] },     // Am
+    { root: 43.65, notes: [174.61, 220.0, 261.63] },    // F
+    { root: 49.0, notes: [196.0, 246.94, 293.66] }      // G
+  ];
+  const melody = [
+    [523.25, 659.25, 783.99, 659.25],
+    [440.0, 523.25, 659.25, 523.25],
+    [349.23, 440.0, 523.25, 440.0],
+    [392.0, 493.88, 587.33, 493.88]
+  ];
+
+  let step = 0;
+  let nextTime = 0;
+  const stepDur = beat / 2;
+
+  function pad(when, chord, length) {
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(0.075, when + 0.9);
+    g.gain.setValueAtTime(0.075, when + length - 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + length);
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(520, when);
+    filter.frequency.linearRampToValueAtTime(1500, when + length * 0.5);
+    filter.frequency.linearRampToValueAtTime(700, when + length);
+    filter.Q.value = 0.8;
+    chord.notes.forEach((f, i) => {
+      const osc = audioCtx.createOscillator();
+      osc.type = i === 0 ? 'triangle' : 'sawtooth';
+      osc.frequency.value = f;
+      osc.detune.value = (i - 1) * 6;
+      osc.connect(filter);
+      osc.start(when);
+      osc.stop(when + length + 0.1);
+    });
+    filter.connect(g);
+    g.connect(dry);
+    g.connect(verb);
+  }
+  function bass(when, freq) {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(0.30, when + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + beat * 0.95);
+    osc.connect(g); g.connect(dry);
+    osc.start(when); osc.stop(when + beat);
+  }
+  function bell(when, freq, level) {
+    const carrier = audioCtx.createOscillator();
+    carrier.type = 'sine';
+    carrier.frequency.value = freq;
+    const mod = audioCtx.createOscillator();
+    mod.type = 'sine';
+    mod.frequency.value = freq * 2.01;
+    const modGain = audioCtx.createGain();
+    modGain.gain.setValueAtTime(freq * 1.6, when);
+    modGain.gain.exponentialRampToValueAtTime(1, when + 0.18);
+    mod.connect(modGain); modGain.connect(carrier.frequency);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(level, when + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.9);
+    carrier.connect(g);
+    g.connect(dry); g.connect(verb);
+    carrier.start(when); carrier.stop(when + 1);
+    mod.start(when); mod.stop(when + 1);
+  }
+  function kick(when) {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(130, when);
+    osc.frequency.exponentialRampToValueAtTime(44, when + 0.13);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.5, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.26);
+    osc.connect(g); g.connect(dry);
+    osc.start(when); osc.stop(when + 0.3);
+  }
+  function noiseBuffer(seconds) {
+    const length = Math.floor(audioCtx.sampleRate * seconds);
+    const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i += 1) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+  const noise = noiseBuffer(0.3);
+  function shaker(when, level) {
+    const src = audioCtx.createBufferSource();
+    src.buffer = noise;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 7200;
+    filter.Q.value = 1.1;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(level, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.09);
+    src.connect(filter); filter.connect(g); g.connect(dry); g.connect(verb);
+    src.start(when); src.stop(when + 0.12);
+  }
+
+  // A quiet floor of tape hiss so it feels live rather than synthetic.
+  const hiss = audioCtx.createBufferSource();
+  hiss.buffer = noiseBuffer(2);
+  hiss.loop = true;
+  const hissGain = audioCtx.createGain();
+  hissGain.gain.value = 0.006;
+  const hissFilter = audioCtx.createBiquadFilter();
+  hissFilter.type = 'lowpass';
+  hissFilter.frequency.value = 2600;
+  hiss.connect(hissFilter); hissFilter.connect(hissGain); hissGain.connect(dry);
+  hiss.start(0);
+
+  function schedule() {
+    const now = audioCtx.currentTime;
+    const horizon = now + 0.4;
+    while (nextTime < horizon) {
+      const s = step;
+      const barIndex = Math.floor(s / 8) % 4;
+      const chord = chords[barIndex];
+      const inBar = s % 8;
+      const human = (Math.random() - 0.5) * 0.012;
+
+      if (inBar === 0) pad(nextTime, chord, bar * 2);
+      if (inBar === 0 || inBar === 3 || inBar === 5 || inBar === 7) bass(nextTime + human, chord.root);
+      if (inBar % 2 === 0 && inBar < 6) bell(nextTime + human * 2, melody[barIndex][inBar / 2], 0.10);
+      if (inBar === 0 || inBar === 4) kick(nextTime + human);
+      if (inBar % 2 === 1) shaker(nextTime + human, inBar === 3 ? 0.07 : 0.045);
+
+      nextTime += stepDur;
+      step += 1;
+    }
+  }
+
+  return {
+    start(at) {
+      nextTime = at;
+      master.gain.cancelScheduledValues(at);
+      master.gain.setValueAtTime(0.0001, at);
+      master.gain.exponentialRampToValueAtTime(0.55, at + 3.5);
+      schedule();
+      return setInterval(schedule, 60);
+    },
+    fadeOut(at, length) {
+      master.gain.cancelScheduledValues(at);
+      master.gain.setValueAtTime(0.55, at);
+      master.gain.exponentialRampToValueAtTime(0.0001, at + length);
+    }
+  };
+}
+
+/* ---------- the film ---------- */
+async function loadImages() {
+  const images = {};
+  await Promise.all(SCENES.map(async (scene) => {
+    if (!scene.frame) return;
+    images[scene.frame] = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = BASE + 'frames/' + scene.frame + '.png';
+    });
+  }));
+  return images;
+}
+
+async function build() {
+  const images = await loadImages();
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const destination = audioCtx.createMediaStreamDestination();
+  const music = buildMusic(audioCtx, destination);
+
+  const buffers = {};
+  await Promise.all(SCENES.map(async (scene) => {
+    if (!scene.line) return;
+    buffers[scene.line] = await fetch(BASE + 'audio/' + scene.line + '.wav')
+      .then((r) => r.arrayBuffer())
+      .then((b) => audioCtx.decodeAudioData(b));
+  }));
+
+  const GAP = 0.55;
+  const LEAD = 0.35;
+  let t = 1.6;
+  const timeline = SCENES.map((scene) => {
+    const speech = scene.line ? buffers[scene.line].duration : 0;
+    const start = t;
+    const end = start + speech + GAP;
+    t = end;
+    return { scene, start, end, speech, voiceAt: start + LEAD };
+  });
+  const total = t + 2.2;
+
+  timeline.forEach((item) => {
+    if (!item.scene.line) return;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffers[item.scene.line];
+    const g = audioCtx.createGain();
+    g.gain.value = 1.05;
+    src.connect(g); g.connect(destination);
+    src.start(item.voiceAt);
+  });
+
+  // Capture at a steady rate: asking for frames by hand does not pick up
+  // the new content in a headless browser.
+  const canvasStream = canvas.captureStream(30);
+  const stream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...destination.stream.getAudioTracks()
+  ]);
+  const recorder = new MediaRecorder(stream, {
+    mimeType: 'video/mp4;codecs=avc1.42E01E',
+    videoBitsPerSecond: 6000000
+  });
+  const parts = [];
+  recorder.ondataavailable = (e) => { if (e.data.size) parts.push(e.data); };
+  const finished = new Promise((resolve) => { recorder.onstop = resolve; });
+
+  drawBackdrop(0);
+
+  const startedAt = audioCtx.currentTime + 0.35;
+  const timer = music.start(startedAt);
+  music.fadeOut(startedAt + total - 3.5, 3.4);
+
+  recorder.start(250);
+  const draw = () => {
+    const now = audioCtx.currentTime - startedAt;
+    const t = Math.max(0, now);
+    drawBackdrop(t);
+    drawBrand();
+
+    let index = timeline.findIndex((item) => t >= item.start && t < item.end);
+    if (index < 0) index = t < timeline[0].start ? 0 : timeline.length - 1;
+    const item = timeline[index];
+    const scene = item.scene;
+    const appear = Math.min(1, Math.max(0, (t - item.start) / 0.5));
+    const progress = Math.min(1, Math.max(0, (t - item.start) / Math.max(0.5, item.end - item.start)));
+    const zoom = 1.0 + 0.07 * progress;
+    const drift = -14 + 26 * progress;
+
+    if (scene.frame) {
+      drawPhone(images[scene.frame], zoom, drift);
+      drawChip('KES 600 / mwezi');
+    } else {
+      const scale = 1 + 0.04 * Math.sin(t * 1.2);
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(scale, scale);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = COLORS.lime;
+      ctx.font = '800 130px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(scene.big, 0, -40);
+      ctx.fillStyle = COLORS.white;
+      ctx.font = '600 46px "Segoe UI", Arial, sans-serif';
+      wrap(ctx, scene.small, W - 220).forEach((line, i) => ctx.fillText(line, 0, 60 + i * 58));
+      ctx.restore();
+    }
+
+    drawCaptions(scene, appear);
+    drawProgress(t, total);
+  };
+  const ticker = setInterval(draw, 1000 / 30);
+
+  await new Promise((r) => setTimeout(r, total * 1000 + 1500));
+  recorder.stop();
+  clearInterval(ticker);
+  clearInterval(timer);
+  await finished;
+
+  const blob = new Blob(parts, { type: 'video/mp4' });
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  window.__video = btoa(binary);
+  window.__videoMeta = { total, scenes: timeline.length, mime: recorder.mimeType };
+}
+
+window.buildAd = build;
+
+/* Preview: draw one moment of the film so the look can be checked without
+   recording the whole thing. */
+window.previewAd = async (times) => {
+  const images = await loadImages();
+  const script = await fetch(BASE + 'audio/script.json').then((r) => r.json());
+  const GAP = 0.55, LEAD = 0.35;
+  let t = 1.6;
+  const timeline = SCENES.map((scene, i) => {
+    const speech = script.durations[i] || 0;
+    const start = t;
+    const end = start + speech + GAP;
+    t = end;
+    return { scene, start, end, speech, voiceAt: start + LEAD };
+  });
+  const total = t + 2.2;
+  const shots = [];
+  for (const moment of times) {
+    let index = timeline.findIndex((item) => moment >= item.start && moment < item.end);
+    if (index < 0) index = moment < timeline[0].start ? 0 : timeline.length - 1;
+    const item = timeline[index];
+    const scene = item.scene;
+    const appear = Math.min(1, Math.max(0, (moment - item.start) / 0.5));
+    const progress = Math.min(1, Math.max(0, (moment - item.start) / Math.max(0.5, item.end - item.start)));
+    const zoom = 1.0 + 0.07 * progress;
+    const drift = -14 + 26 * progress;
+    drawBackdrop(moment);
+    drawBrand();
+    if (scene.frame) {
+      drawPhone(images[scene.frame], zoom, drift);
+      drawChip('KES 600 / mwezi');
+    } else {
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = COLORS.lime;
+      ctx.font = '800 130px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(scene.big, 0, -40);
+      ctx.fillStyle = COLORS.white;
+      ctx.font = '600 46px "Segoe UI", Arial, sans-serif';
+      wrap(ctx, scene.small, W - 220).forEach((line, i) => ctx.fillText(line, 0, 60 + i * 58));
+      ctx.restore();
+    }
+    drawCaptions(scene, appear);
+    drawProgress(moment, total);
+    shots.push(canvas.toDataURL('image/png'));
+  }
+  return shots;
+};
+</script>
+</body>
+</html>

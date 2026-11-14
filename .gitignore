@@ -1,0 +1,21 @@
+# Noisy artifacts
+apk-extract/
+bizplus-pos-analysis/
+node_modules/
+.idea/
+.vscode/
+.claude/
+.agents/
+.rea-setup/
+
+# Signing keys
+*.jks
+*.keystore
+keystore.properties
+
+# Build artifacts
+biller android pos/android/app/build/
+biller android pos/android/.gradle/
+biller android pos/android/local.properties
+biller android pos/www/
+biller pc pos/www/
