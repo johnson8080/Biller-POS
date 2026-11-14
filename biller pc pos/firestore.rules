@@ -12,16 +12,17 @@ service cloud.firestore {
     // One document per account. The shop follows the account, not the
     // device: sign in on another phone and the same shop comes with you.
     match /billerShops/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow create, update, delete: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isOwner());
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if signedIn() && (request.auth.uid == uid || isOwner());
     }
 
     // --- Presence -------------------------------------------------------
     // Each account writes only its own record (email, app version, last
     // seen, online flag). Only the developer may read the whole list.
     match /billerPresence/{uid} {
-      allow read: if signedIn() && isOwner();
-      allow create, update, delete: if signedIn() && request.auth.uid == uid;
+      allow read, delete: if signedIn() && isOwner();
+      allow create, update: if signedIn() && request.auth.uid == uid;
     }
 
     // --- Payment requests -----------------------------------------------

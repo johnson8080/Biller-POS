@@ -1429,15 +1429,15 @@
         <span class="plan-row-name"><strong>${esc(row.shop || "Shop")}</strong><small>${esc(row.email || "")}</small></span>
         <span class="plan-row-pill ${tone}">${esc(label)}</span>
       </div>
-      <div class="plan-row-meta">
-        <span class="plan-row-code">${esc(row.code || "no code")}</span>
-        <span>${row.amount ? esc(T.money(row.amount)) : ""}</span>
-        ${row.reference ? `<span>ref ${esc(row.reference)}</span>` : ""}
-        ${row.mpesaCode ? `<span>M-Pesa code ${esc(row.mpesaCode)}</span>` : ""}
-        ${row.dupCode ? `<span class="plan-dup-flag">${icon("i-alert")} Same code as another shop</span>` : ""}
-        ${row.phone ? `<span>${esc(row.phone)}</span>` : ""}
-        ${row.paidAt ? `<span>paid ${esc(T.shortDateFmt.format(new Date(row.paidAt)))}</span>` : ""}
-        <span>${esc(seen(row.at))}</span>
+      <div class="plan-row-meta" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; font-size:0.9em; align-items:center;">
+        <span class="plan-row-code"><strong>${esc(row.code || "no code")}</strong></span>
+        ${row.amount ? ` · <span>${esc(T.money(row.amount))}</span>` : ""}
+        ${row.reference ? ` · <span>ref ${esc(row.reference)}</span>` : ""}
+        ${row.mpesaCode ? ` · <span>M-Pesa ${esc(row.mpesaCode)}</span>` : ""}
+        ${row.dupCode ? ` · <span class="plan-dup-flag">${icon("i-alert")} Same code</span>` : ""}
+        ${row.phone ? ` · <span>${esc(row.phone)}</span>` : ""}
+        ${row.paidAt ? ` · <span>paid ${esc(T.shortDateFmt.format(new Date(row.paidAt)))}</span>` : ""}
+        <span class="muted" style="margin-left:auto">${esc(seen(row.at))}</span>
       </div>
       ${row.pending ? `<div class="plan-row-actions">
         <button class="btn btn-primary" data-act="confirm-payment" data-id="${esc(row.id)}">Confirm payment</button>
@@ -1631,7 +1631,7 @@
       <div class="about-card">
         <div class="about-top">
           <span class="about-mark">${icon("i-store")}</span>
-          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.3 · cloud-synced till</div></div>
+          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.4 · cloud-synced till</div></div>
         </div>
         <p><strong>Cash is recorded on this device.</strong> M-Pesa sends a real PIN prompt to the customer once your Paybill or Till is connected in Store &amp; receipts. The card reader is a demo and moves no money.</p>
       </div>`;
@@ -1649,7 +1649,7 @@
         ${settingsGroup("appearance", "i-pencil", "Appearance", `${themeName} · ${T.colorScheme() === "dark" ? "Dark" : "Light"}`, appearanceBody)}
         ${settingsGroup("account", "i-user", "Account", session ? session.email : "Not signed in", accountBody)}
         ${settingsGroup("data", "i-lock", "Data & privacy", "Export, backup and reset", dataBody)}
-        ${settingsGroup("about", "i-info", "About", "Version 1.0.3", aboutBody)}
+        ${settingsGroup("about", "i-info", "About", "Version 1.0.4", aboutBody)}
         ${isDeveloper ? settingsGroup("developer", "i-chat", "Developer", "Subscriptions and support", developerBody) : ""}
       </div>
 
