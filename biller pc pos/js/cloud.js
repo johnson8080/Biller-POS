@@ -385,6 +385,21 @@
     }
   }
 
+  /** The developer deletes an account. */
+  async function deleteAccount(uid) {
+    if (!fs || !user || !isOwner()) return { ok: false, error: "Not allowed." };
+    try {
+      await fs.collection("accounts").doc(uid).delete();
+      await fs.collection(PAYMENT_COLLECTION).doc(uid).delete();
+      accounts = accounts.filter((item) => item.id !== uid);
+      paymentRequests = paymentRequests.filter((item) => item.id !== uid);
+      notify();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: friendlyError(error) };
+    }
+  }
+
   /** Watch the payment requests. Only the developer reads this list. */
   function watchPayments() {
     if (!fs) return;
@@ -558,6 +573,7 @@
     requestPayment,
     confirmPayment,
     declinePayment,
+    deleteAccount,
     onPaymentPrompt: (fn) => { onPaymentPrompt = fn; },
     devEmails: () => DEV_EMAILS.slice()
   };

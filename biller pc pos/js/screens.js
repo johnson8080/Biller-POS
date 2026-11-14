@@ -1307,6 +1307,8 @@
 
     const requests = T.cloud.paymentRequests?.() || [];
     const accounts = T.cloud.accounts?.() || [];
+    const onlineOnly = T.ui.onlineOnly;
+
     const seen = (stamp) => {
       if (!stamp) return "not seen yet";
       const minutes = Math.floor((Date.now() - stamp) / 60000);
@@ -1315,6 +1317,8 @@
       if (minutes < 1440) return `${Math.floor(minutes / 60)} h ago`;
       return T.shortDateFmt.format(new Date(stamp));
     };
+
+    const isOnline = (at) => at && (Date.now() - at < 900000); // 15 min
 
     // One row per shop: the payment request first, then the plan state from
     // the presence records.
@@ -1361,32 +1365,36 @@
         pending: asked
       });
     });
-    entries.sort((a, b) => (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || (b.at || 0) - (a.at || 0));
+
+    const filteredEntries = onlineOnly ? entries.filter(e => isOnline(e.at)) : entries;
+    filteredEntries.sort((a, b) => (b.pending ? 1 : 0) - (a.pending ? 1 : 0) || (b.at || 0) - (a.at || 0));
+    
     // An M-Pesa code belongs to exactly one real transaction. If two shops
     // send the same code, at least one payment is being claimed twice.
     const codeOwners = new Map();
-    for (const entry of entries) {
+    for (const entry of filteredEntries) {
       const code = String(entry.mpesaCode || "").trim().toUpperCase();
       if (!code) continue;
       if (!codeOwners.has(code)) codeOwners.set(code, new Set());
       codeOwners.get(code).add(entry.email || entry.shop || entry.id);
     }
-    for (const entry of entries) {
+    for (const entry of filteredEntries) {
       const code = String(entry.mpesaCode || "").trim().toUpperCase();
       entry.dupCode = code && (codeOwners.get(code)?.size || 0) > 1 ? code : "";
     }
-    const rows = entries.map((entry) => planRow(entry, seen));
+    const rows = filteredEntries.map((entry) => planRow(entry, seen));
 
-    const pendingCount = entries.filter((row) => row.pending).length;
-    const paidCount = entries.filter((row) => row.status === "active" || row.status === "confirmed").length;
-    const dueCount = entries.filter((row) => row.status === "due" || row.status === "overdue").length;
-    const monthly = entries.filter((row) => row.status === "active" || row.status === "confirmed").reduce((sum, row) => sum + (row.amount || 0), 0);
+    const pendingCount = filteredEntries.filter((row) => row.pending).length;
+    const paidCount = filteredEntries.filter((row) => row.status === "active" || row.status === "confirmed").length;
+    const dueCount = filteredEntries.filter((row) => row.status === "due" || row.status === "overdue").length;
+    const monthly = filteredEntries.filter((row) => row.status === "active" || row.status === "confirmed").reduce((sum, row) => sum + (row.amount || 0), 0);
 
     return `<section class="screen" aria-labelledby="plans-title">
       <div class="screen-head">
         <p class="eyebrow">Developer</p>
         <h1 id="plans-title">Subscriptions</h1>
         <p class="sub">Every shop, its code, and what has been paid.</p>
+        <button class="btn btn-ghost" data-act="toggle-online-only">${icon("i-eye")} Online only</button>
       </div>
       <div class="plan-stats">
         <div class="plan-stat"><span class="label">Shops</span><strong>${rows.length}</strong></div>
@@ -1433,7 +1441,10 @@
       ${row.pending ? `<div class="plan-row-actions">
         <button class="btn btn-primary" data-act="confirm-payment" data-id="${esc(row.id)}">Confirm payment</button>
         <button class="btn btn-ghost" data-act="decline-payment" data-id="${esc(row.id)}">Not paid</button>
-      </div>` : ""}
+        <button class="btn btn-ghost is-bad" data-act="delete-account" data-id="${esc(row.id)}">${icon("i-trash")} Delete</button>
+      </div>` : `<div class="plan-row-actions">
+        <button class="btn btn-ghost is-bad" data-act="delete-account" data-id="${esc(row.id)}">${icon("i-trash")} Delete</button>
+      </div>`}
       ${row.email && row.email.includes("@") ? `<div class="plan-row-actions">
         <a class="btn btn-ghost" href="mailto:${esc(row.email)}?subject=${encodeURIComponent("Your Biller POS monthly plan")}">${icon("i-mail")} Email this shop</a>
         <button class="btn btn-ghost" data-act="copy-shop-code" data-code="${esc(row.code || "")}">${icon("i-check")} Copy code</button>
@@ -1619,7 +1630,7 @@
       <div class="about-card">
         <div class="about-top">
           <span class="about-mark">${icon("i-store")}</span>
-          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.1 (OTA Verified) · cloud-synced till</div></div>
+          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.2 · cloud-synced till</div></div>
         </div>
         <p><strong>Cash is recorded on this device.</strong> M-Pesa sends a real PIN prompt to the customer once your Paybill or Till is connected in Store &amp; receipts. The card reader is a demo and moves no money.</p>
       </div>`;
@@ -1637,7 +1648,7 @@
         ${settingsGroup("appearance", "i-pencil", "Appearance", `${themeName} · ${T.colorScheme() === "dark" ? "Dark" : "Light"}`, appearanceBody)}
         ${settingsGroup("account", "i-user", "Account", session ? session.email : "Not signed in", accountBody)}
         ${settingsGroup("data", "i-lock", "Data & privacy", "Export, backup and reset", dataBody)}
-        ${settingsGroup("about", "i-info", "About", "Version 1.0.1 (OTA Verified)", aboutBody)}
+        ${settingsGroup("about", "i-info", "About", "Version 1.0.2", aboutBody)}
         ${isDeveloper ? settingsGroup("developer", "i-chat", "Developer", "Subscriptions and support", developerBody) : ""}
       </div>
 
