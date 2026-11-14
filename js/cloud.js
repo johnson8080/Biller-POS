@@ -389,7 +389,8 @@
   async function deleteAccount(uid) {
     if (!fs || !user || !isOwner()) return { ok: false, error: "Not allowed." };
     try {
-      await fs.collection("accounts").doc(uid).delete();
+      await fs.collection(SHOP_COLLECTION).doc(uid).delete();
+      await fs.collection(PRESENCE_COLLECTION).doc(uid).delete();
       await fs.collection(PAYMENT_COLLECTION).doc(uid).delete();
       accounts = accounts.filter((item) => item.id !== uid);
       paymentRequests = paymentRequests.filter((item) => item.id !== uid);

@@ -1631,7 +1631,7 @@
       <div class="about-card">
         <div class="about-top">
           <span class="about-mark">${icon("i-store")}</span>
-          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.4 · cloud-synced till</div></div>
+          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.5 · cloud-synced till</div></div>
         </div>
         <p><strong>Cash is recorded on this device.</strong> M-Pesa sends a real PIN prompt to the customer once your Paybill or Till is connected in Store &amp; receipts. The card reader is a demo and moves no money.</p>
       </div>`;
@@ -1649,7 +1649,7 @@
         ${settingsGroup("appearance", "i-pencil", "Appearance", `${themeName} · ${T.colorScheme() === "dark" ? "Dark" : "Light"}`, appearanceBody)}
         ${settingsGroup("account", "i-user", "Account", session ? session.email : "Not signed in", accountBody)}
         ${settingsGroup("data", "i-lock", "Data & privacy", "Export, backup and reset", dataBody)}
-        ${settingsGroup("about", "i-info", "About", "Version 1.0.4", aboutBody)}
+        ${settingsGroup("about", "i-info", "About", "Version 1.0.5", aboutBody)}
         ${isDeveloper ? settingsGroup("developer", "i-chat", "Developer", "Subscriptions and support", developerBody) : ""}
       </div>
 
