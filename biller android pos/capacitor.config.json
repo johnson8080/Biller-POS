@@ -3,8 +3,7 @@
   "appName": "Biller POS",
   "webDir": "www",
   "server": {
-    "url": "https://johnson8080.github.io/biller-pos/",
-    "cleartext": true
+    "androidScheme": "https"
   },
   "plugins": {
     "SplashScreen": {

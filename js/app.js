@@ -435,6 +435,21 @@ async function confirmShopPayment(id) {
   render();
 }
 
+/** The developer deletes an account. */
+async function deleteShopAccount(id) {
+  const T = window.Till;
+  if (!confirm("Delete this shop account? This cannot be undone.")) return;
+  const result = await T.cloud?.deleteAccount?.(id);
+  T.toast(result?.ok ? "Account deleted." : result?.error || "Could not delete", result?.ok ? "i-check" : "i-alert");
+  render();
+}
+
+function toggleOnlineOnly() {
+  const T = window.Till;
+  T.ui.onlineOnly = !T.ui.onlineOnly;
+  render();
+}
+
 /** The developer marks a request as not paid. */
 async function declineShopPayment(id) {
   const T = window.Till;
@@ -827,6 +842,8 @@ function runAction(btn) {
   else if (act === "mpesa-test-push") { testMpesaPush(); }
   else if (act === "confirm-payment" && id) { confirmShopPayment(id); }
   else if (act === "decline-payment" && id) { declineShopPayment(id); }
+  else if (act === "delete-account" && id) { deleteShopAccount(id); }
+  else if (act === "toggle-online-only") { toggleOnlineOnly(); }
   else if (act === "copy-shop-code") { copyShopCode(btn); }
   else if (act === "copy-value" && value) { copyPlainValue(value); }
 
