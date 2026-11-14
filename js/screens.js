@@ -85,6 +85,7 @@
       <div class="appbar-right">
         ${isSell ? `<button class="hero-btn hero-scan" data-act="open-scanner" aria-label="Scan barcode">${icon("i-scan")}</button>
         <button class="hero-btn hero-search ${T.ui.searchOpen ? "is-active" : ""}" data-act="toggle-search" aria-label="${T.ui.searchOpen ? "Close search" : "Search products"}" aria-pressed="${T.ui.searchOpen ? "true" : "false"}">${icon("i-search")}</button>` : ""}
+        ${T.isDeveloperAccount() ? `<button class="hero-btn" data-nav="#/plans" aria-label="Online accounts">${icon("i-eye")}</button>` : ""}
         <button class="cart-hero" data-act="open-cart" aria-label="Checkout, ${cartCount} ${cartCount === 1 ? "item" : "items"} in the cart">
           ${icon("i-bag")}
           ${cartCount ? `<span class="cart-hero-count">${cartCount}</span>` : ""}
@@ -1630,7 +1631,7 @@
       <div class="about-card">
         <div class="about-top">
           <span class="about-mark">${icon("i-store")}</span>
-          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.2 · cloud-synced till</div></div>
+          <div><div class="about-name">Biller POS</div><div class="about-version">Version 1.0.3 · cloud-synced till</div></div>
         </div>
         <p><strong>Cash is recorded on this device.</strong> M-Pesa sends a real PIN prompt to the customer once your Paybill or Till is connected in Store &amp; receipts. The card reader is a demo and moves no money.</p>
       </div>`;
@@ -1648,7 +1649,7 @@
         ${settingsGroup("appearance", "i-pencil", "Appearance", `${themeName} · ${T.colorScheme() === "dark" ? "Dark" : "Light"}`, appearanceBody)}
         ${settingsGroup("account", "i-user", "Account", session ? session.email : "Not signed in", accountBody)}
         ${settingsGroup("data", "i-lock", "Data & privacy", "Export, backup and reset", dataBody)}
-        ${settingsGroup("about", "i-info", "About", "Version 1.0.2", aboutBody)}
+        ${settingsGroup("about", "i-info", "About", "Version 1.0.3", aboutBody)}
         ${isDeveloper ? settingsGroup("developer", "i-chat", "Developer", "Subscriptions and support", developerBody) : ""}
       </div>
 
